@@ -10,7 +10,7 @@ async function connect() {
         const channel = await connection.createChannel();
         // dichiarazione dell'exchange e della coda
         const exchangeName = 'orderEx';
-        const queueName = 'newOrderRK';
+        const queueName = 'paidRK';
         await channel.assertExchange(exchangeName, 'direct');
         await channel.assertQueue(queueName, {
             durable: true
@@ -48,11 +48,11 @@ app.get('/', async (req, res) => {
   });
 
   // invio del messaggio all'exchange
-  const message = `Hello, world! ${new Date().getSeconds()}`;
+  const message = JSON.stringify({ msg: req.body});
   const routingKey = 'notifiedRK';
   channel.publish(exchangeName, routingKey, Buffer.from(message));
 
-  console.log(`[x] Sent '${message}' to '${exchangeName}' with routing key '${routingKey}'`);
+  console.log(`[x] Notification: Sent '${message}' to '${exchangeName}' with routing key '${routingKey}'`);
 
 
   return res.send("OK 8001");

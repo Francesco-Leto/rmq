@@ -25,6 +25,12 @@ async function connect() {
 
             // riconoscimento del messaggio elaborato
             channel.ack(msg);
+
+            // invio del messaggio all'exchange per altra coda letta da orders-api
+            // buffer to string
+            const message = msg.content.toString();
+
+            consumePaid( message );
         }, {
             noAck: false,
             consumerTag: "payments-api"
@@ -37,7 +43,7 @@ async function connect() {
 }
 connect();
 
-async function consume() {
+async function consumePaid(msg) {
   const connection = await amqp.connect(amqpUrl);
   const channel = await connection.createChannel();
 
@@ -48,14 +54,12 @@ async function consume() {
   });
 
   // invio del messaggio all'exchange
-  const message = `Hello, world! ${new Date().getSeconds()}`;
+  const message = msg;
   const routingKey = 'paidRK';
   channel.publish(exchangeName, routingKey, Buffer.from(message));
 
   console.log(`[x] Sent '${message}' to '${exchangeName}' with routing key '${routingKey}'`);
 };
-
-consume();
 
 
 app.listen(8002, () => {

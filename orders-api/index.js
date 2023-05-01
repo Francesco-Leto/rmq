@@ -4,7 +4,7 @@ const app = express()
 const amqp = require('amqplib');
 const amqpUrl = process.env.AMQP_URL || 'amqp://localhost:5672';
 
-async function connect() {
+/* async function connect() {
     try {
         const connection = await amqp.connect(amqpUrl);
         const channel = await connection.createChannel();
@@ -35,7 +35,7 @@ async function connect() {
         });
     }
 }
-connect();
+connect(); */
 
 app.get('/', async (req, res) => {
     const connection = await amqp.connect(amqpUrl);
@@ -50,14 +50,13 @@ app.get('/', async (req, res) => {
 
     // invio del messaggio all'exchange
     const message = JSON.stringify({
-        customerId: 4,
-        orderId: 6,
-        number: "111 222 3333"
+        orderId: Math.floor(Math.random() * 999) + 1,
     });
     const routingKey = 'newOrderRK';
     channel.publish(exchangeName, routingKey, Buffer.from(message));
+    
 
-    console.log(`[x] Sent '${message}' to '${exchangeName}' with routing key '${routingKey}'`);
+    console.log(`[x] Orders: Sent '${message}' to '${exchangeName}' with routing key '${routingKey}'`);
 
     return res.send("OK 8000");
 })
