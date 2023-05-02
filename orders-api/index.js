@@ -4,6 +4,7 @@ const app = express()
 const amqp = require('amqplib');
 const amqpUrl = process.env.AMQP_URL || 'amqp://localhost:5672';
 
+// esempio con piu consumer su coda di tipo direct, roundrobin
 /* async function connect() {
     try {
         const connection = await amqp.connect(amqpUrl);

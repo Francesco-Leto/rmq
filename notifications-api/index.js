@@ -19,11 +19,15 @@ async function connect() {
 
         // gestione dei messaggi
         console.log('[*] Waiting for messages in "' + queueName + '" queue. To exit press CTRL+C');
+
+        //in caso di roundrobin evitiamo di caricare piu job a un server che è ancora in elaborazione
+        //  specifica il numero massimo di messaggi che possono essere inviati al consumatore in anticipo, prima che il consumatore confermi la ricezione dei messaggi precedenti.ù
+        channel.prefetch(1);
         channel.consume(queueName, (msg) => {
             const content = msg.content.toString();
             console.log(`[x] Received '${content}' from '${queueName}'`);
 
-            // riconoscimento del messaggio elaborato
+            // riconoscimento del messaggio elaborato e cancellazione dalla coda
             channel.ack(msg);
         }, {
             noAck: false,
