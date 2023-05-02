@@ -43,12 +43,12 @@ app.get('/', async (req, res) => {
 const channel = await connection.createChannel();
 
 // dichiarazione dell'exchange come fanout
-const exchangeName = 'orderEx';
+const exchangeName = 'orderExTopic';
 
 // creo 2 code diverse per i 2 consumer, ogni consumer avrà la propria copia del messaggio e potrà elaborarla indipendentemente.
-const queuePayments = 'payments-queue';
-const queueNotification = 'notification-queue';
-await channel.assertExchange(exchangeName, 'fanout', {
+const queuePayments = 'payments-queue-topic';
+const queueNotification = 'notification-queue-topic';
+await channel.assertExchange(exchangeName, 'topic', {
     durable: true
 });
 
@@ -63,7 +63,7 @@ const message = JSON.stringify({
  await channel.bindQueue(queuePayments, exchangeName, '');
  await channel.bindQueue(queueNotification, exchangeName, '');
 
-const routingKey = ''; // in una exchange fanout la routing key è ignorata
+const routingKey = 'orders.new.phone.mazda'; 
 channel.publish(exchangeName, routingKey, Buffer.from(message));
 
 console.log(`[x] Orders: Sent '${message}' to '${exchangeName}' with routing key '${routingKey}'`);

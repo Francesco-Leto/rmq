@@ -9,15 +9,15 @@ async function connect() {
     const connection = await amqp.connect(amqpUrl);
     const channel = await connection.createChannel();
     // dichiarazione dell'exchange e della coda
-    const exchangeName = 'orderEx';
-    const queueName = 'payments-queue';
-    await channel.assertExchange(exchangeName, 'fanout', {
+    const exchangeName = 'orderExTopic';
+    const queueName = 'payments-queue-mazda-topic';
+    await channel.assertExchange(exchangeName, 'topic', {
       durable: true
     });
     await channel.assertQueue(queueName, {
       durable: true
     });
-    await channel.bindQueue(queueName, exchangeName, '');
+    await channel.bindQueue(queueName, exchangeName, 'orders.new.*.mazda');
 
     // gestione dei messaggi
     console.log('[*] Waiting for messages in "' + queueName + '" queue. To exit press CTRL+C');
