@@ -40,26 +40,35 @@ connect(); */
 
 app.get('/', async (req, res) => {
     const connection = await amqp.connect(amqpUrl);
-    const channel = await connection.createChannel();
+const channel = await connection.createChannel();
 
+// dichiarazione dell'exchange come fanout
+const exchangeName = 'orderEx';
 
-    // dichiarazione dell'exchange e della coda
-    const exchangeName = 'orderEx';
-    await channel.assertExchange(exchangeName, 'direct', {
-        durable: true
-    });
+// creo 2 code diverse per i 2 consumer, ogni consumer avrà la propria copia del messaggio e potrà elaborarla indipendentemente.
+const queuePayments = 'payments-queue';
+const queueNotification = 'notification-queue';
+await channel.assertExchange(exchangeName, 'fanout', {
+    durable: true
+});
 
-    // invio del messaggio all'exchange
-    const message = JSON.stringify({
-        orderId: Math.floor(Math.random() * 999) + 1,
-    });
-    const routingKey = 'newOrderRK';
-    channel.publish(exchangeName, routingKey, Buffer.from(message));
-    
+// invio del messaggio all'exchange
+const message = JSON.stringify({
+    orderId: Math.floor(Math.random() * 999) + 1,
+});
 
-    console.log(`[x] Orders: Sent '${message}' to '${exchangeName}' with routing key '${routingKey}'`);
+ // Creazione delle code e binding all'exchange
+ await channel.assertQueue(queuePayments, { durable: true });
+ await channel.assertQueue(queueNotification, { durable: true });
+ await channel.bindQueue(queuePayments, exchangeName, '');
+ await channel.bindQueue(queueNotification, exchangeName, '');
 
-    return res.send("OK 8000");
+const routingKey = ''; // in una exchange fanout la routing key è ignorata
+channel.publish(exchangeName, routingKey, Buffer.from(message));
+
+console.log(`[x] Orders: Sent '${message}' to '${exchangeName}' with routing key '${routingKey}'`);
+
+return res.send("OK 8000");
 })
 
 app.listen(8000, () => {

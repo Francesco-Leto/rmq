@@ -10,15 +10,18 @@ async function connect() {
     const channel = await connection.createChannel();
     // dichiarazione dell'exchange e della coda
     const exchangeName = 'orderEx';
-    const queueName = 'newOrderRK';
-    await channel.assertExchange(exchangeName, 'direct');
+    const queueName = 'payments-queue';
+    await channel.assertExchange(exchangeName, 'fanout', {
+      durable: true
+    });
     await channel.assertQueue(queueName, {
       durable: true
     });
-    await channel.bindQueue(queueName, exchangeName, queueName);
+    await channel.bindQueue(queueName, exchangeName, '');
 
     // gestione dei messaggi
     console.log('[*] Waiting for messages in "' + queueName + '" queue. To exit press CTRL+C');
+    channel.prefetch(null);
     channel.consume(queueName, (msg) => {
       const content = msg.content.toString();
       console.log(`[x] Received '${content}' from '${queueName}'`);
@@ -30,7 +33,6 @@ async function connect() {
       // buffer to string
       const message = msg.content.toString();
 
-      consumePaid(message);
     }, {
       noAck: false,
       consumerTag: "payments-api"
@@ -42,33 +44,6 @@ async function connect() {
   }
 }
 connect();
-
-async function consumePaid(msg) {
-  try {
-
-    const connection = await amqp.connect(amqpUrl);
-    const channel = await connection.createChannel();
-
-    // dichiarazione dell'exchange e della coda
-    const exchangeName = 'orderEx';
-    await channel.assertExchange(exchangeName, 'direct', {
-      durable: true
-    });
-
-    // invio del messaggio all'exchange
-    const message = msg;
-    const routingKey = 'paidRK';
-    channel.publish(exchangeName, routingKey, Buffer.from(message));
-
-    console.log(`[x] Sent '${message}' to '${exchangeName}' with routing key '${routingKey}'`);
-
-  } catch (error) {
-    console.log({
-      error
-    });
-  }
-
-};
 
 
 app.listen(8002, () => {

@@ -6,61 +6,43 @@ const app = express();
 
 async function connect() {
   try {
-        const connection = await amqp.connect(amqpUrl);
-        const channel = await connection.createChannel();
-        // dichiarazione dell'exchange e della coda
-        const exchangeName = 'orderEx';
-        const queueName = 'paidRK';
-        await channel.assertExchange(exchangeName, 'direct');
-        await channel.assertQueue(queueName, {
-            durable: true
-        });
-        await channel.bindQueue(queueName, exchangeName, queueName);
+    const connection = await amqp.connect(amqpUrl);
+    const channel = await connection.createChannel();
+    // dichiarazione dell'exchange e della coda
+    const exchangeName = 'orderEx';
+    const queueName = 'notification-queue';
+    await channel.assertExchange(exchangeName, 'fanout', {
+      durable: true
+    });
+    await channel.assertQueue(queueName, {
+      durable: true
+    });
+    await channel.bindQueue(queueName, exchangeName, '');
 
-        // gestione dei messaggi
-        console.log('[*] Waiting for messages in "' + queueName + '" queue. To exit press CTRL+C');
+    // gestione dei messaggi
+    console.log('[*] Waiting for messages in "' + queueName + '" queue. To exit press CTRL+C');
+    channel.prefetch(null);
+    channel.consume(queueName, (msg) => {
+      const content = msg.content.toString();
+      console.log(`[x] Received '${content}' from '${queueName}'`);
 
-        //in caso di roundrobin evitiamo di caricare piu job a un server che è ancora in elaborazione
-        //  specifica il numero massimo di messaggi che possono essere inviati al consumatore in anticipo, prima che il consumatore confermi la ricezione dei messaggi precedenti.ù
-        channel.prefetch(1);
-        channel.consume(queueName, (msg) => {
-            const content = msg.content.toString();
-            console.log(`[x] Received '${content}' from '${queueName}'`);
+      // riconoscimento del messaggio elaborato
+      channel.ack(msg);
 
-            // riconoscimento del messaggio elaborato e cancellazione dalla coda
-            channel.ack(msg);
-        }, {
-            noAck: false,
-            consumerTag: "notifications-api"
-        });
-    } catch (error) {
-        console.log({
-            error
-        });
-    }
+      // invio del messaggio all'exchange per altra coda letta da orders-api
+      // buffer to string
+      const message = msg.content.toString();
+    }, {
+      noAck: false,
+      consumerTag: "notification-api"
+    });
+  } catch (error) {
+    console.log({
+      error
+    });
+  }
 }
 connect();
-
-app.get('/', async (req, res) => {
-  const connection = await amqp.connect(amqpUrl);
-  const channel = await connection.createChannel();
-
-  // dichiarazione dell'exchange e della coda
-  const exchangeName = 'orderEx';
-  await channel.assertExchange(exchangeName, 'direct', {
-    durable: true
-  });
-
-  // invio del messaggio all'exchange
-  const message = JSON.stringify({ msg: req.body});
-  const routingKey = 'notifiedRK';
-  channel.publish(exchangeName, routingKey, Buffer.from(message));
-
-  console.log(`[x] Notification: Sent '${message}' to '${exchangeName}' with routing key '${routingKey}'`);
-
-
-  return res.send("OK 8001");
-})
 
 
 app.listen(8001, () => {
